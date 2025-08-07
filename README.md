@@ -7,24 +7,38 @@ This project provides a cross-language toolkit for Windows process inspection an
 - **Example Python scripts**: Demonstrate usage of the library.
 - **PowerShell build helper**: Automates DLL compilation for x86/x64.
 
+> [!IMPORTANT]
+> To get the `dist` binary folder, choose **one** of the following options:
+>
+> | Method                       | Description                                                                                      | Requirements                                                   |
+> |-----------------------------|--------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+> | Manual Build                | Compile the binaries yourself using `cl.exe` or similar toolchains                               | Microsoft Visual Studio with MSVC installed                    |
+> | Auto Build Script           | Run the [`tool/compilerHelper.ps1`](https://github.com/DefinetlyNotAI/PyCTools/blob/main/tool/compilerHelper.ps1) PowerShell script | Visual Studio Build Tools + PowerShell                         |
+> | Prebuilt Release Archive    | Download precompiled binaries from the [releases page](https://github.com/DefinetlyNotAI/PyCTools/releases/tag/v1.0.0)              | None (just extract archive)                                    |
+>
+> No matter what you decide, do still read the important notice about the `dist` from the [release](https://github.com/DefinetlyNotAI/PyCTools/releases/tag/v1.0.0) OR check the [Wiki](https://github.com/DefinetlyNotAI/PyCTools/wiki/DLL-Discovery) page about the DLL discovery explanation.
+
 ## Directory Structure
 
-```
-example/
-  pyCTools/
-    hwrng.py           # Python wrapper for hardware RNG DLL
-    processInspect.py  # Python wrapper for process inspection DLL
-  hwrng_example.py     # Example: hardware RNG usage
-  process_inspect_example.py # Example: process metrics usage
-src/
-  hRng.c               # C source for hardware RNG DLL
-  processInspect.c     # C source for process inspection DLL
-tool/
-  compilerHelper.ps1   # PowerShell script to build DLLs for x86/x64
-dist/
-  x64/                 # Compiled DLLs for 64-bit
-  x86/                 # Compiled DLLs for 32-bit
-```
+<details>
+  <summary>📁 Project Structure (click to expand)</summary>
+
+    example/
+      pyCTools/
+        hwrng.py           # Python wrapper for hardware RNG DLL
+        processInspect.py  # Python wrapper for process inspection DLL
+      hwrng_example.py     # Example: hardware RNG usage
+      process_inspect_example.py # Example: process metrics usage
+    src/
+      hRng.c               # C source for hardware RNG DLL
+      processInspect.c     # C source for process inspection DLL
+    tool/
+      compilerHelper.ps1   # PowerShell script to build DLLs for x86/x64
+    dist/
+      x64/                 # Compiled DLLs for 64-bit
+      x86/                 # Compiled DLLs for 32-bit
+
+</details>
 
 ## Building the DLLs
 
@@ -65,7 +79,12 @@ The Python wrappers automatically search for the correct DLL in:
 
 where `{arch}` is `x64` or `x86` depending on your Python interpreter.
 
-## License
+## Extra resources
 
-MIT or specify your license here.
+> [!TIP]
+> Want to dive deeper into how everything works? Head over to the [PyCTools Wiki](https://github.com/DefinetlyNotAI/PyCTools/wiki) for detailed breakdowns of the key parts:
+>
+> • **DLL explanations**: learn how the DLLs are structured, discovered, and loaded 
+> • **Python examples, wrappers, and usage**: practical code snippets and usage patterns in Python 
+> • **C code explanation**: understand the underlying native implementation
 
