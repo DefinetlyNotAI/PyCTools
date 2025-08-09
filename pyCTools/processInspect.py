@@ -1,8 +1,8 @@
 import ctypes
-import os
 import json
-import platform
 from ctypes import c_char_p, c_size_t, c_ulong, create_string_buffer
+
+from pyCTools._loadDLL import load_dll
 
 
 class ProcessMetrics:
@@ -45,40 +45,9 @@ class ProcessMetrics:
         """
         Initialize ProcessMetrics instance by loading the appropriate DLL
         for the current platform architecture.
-
-        Searches for DLL in relative paths:
-            - ./dist/{arch}/processInspect_{arch}.dll
-            - ../dist/{arch}/processInspect_{arch}.dll
-            - ../../dist/{arch}/processInspect_{arch}.dll
-
-        Raises:
-            FileNotFoundError: If the DLL cannot be found in any of the expected locations.
         """
-        arch = 'x64' if platform.architecture()[0] == '64bit' else 'x86'
-        dll_name = f'processInspect_{arch}.dll'
-        base_dir = os.path.dirname(__file__)
-        possible_dist_paths = [
-            os.path.join(base_dir, 'dist', arch, dll_name),
-            os.path.join(base_dir, '..', 'dist', arch, dll_name),
-            os.path.join(base_dir, '..', '..', 'dist', arch, dll_name),
-        ]
-
-        dll_path = None
-        for path in possible_dist_paths:
-            abs_path = os.path.abspath(path)
-            if os.path.exists(abs_path):
-                dll_path = abs_path
-                break
-
-        if dll_path is None:
-            # Could not find DLL, raise an informative error
-            raise FileNotFoundError(
-                f"Could not find {dll_name} DLL in any of the expected locations:\n" +
-                "\n".join(os.path.abspath(p) for p in possible_dist_paths)
-            )
-
         # Load the DLL using ctypes
-        self._dll = ctypes.CDLL(dll_path)
+        self._dll = load_dll(dll_prefix_name="processInspect", dll_load_func=ctypes.CDLL)
 
         # Define argument and return types of DLL functions for type safety
         self._dll.start_metrics_collection.argtypes = [c_ulong, c_ulong]
@@ -91,7 +60,7 @@ class ProcessMetrics:
         self._dll.get_metrics_json.restype = ctypes.c_int
 
     @staticmethod
-    def _json_call(func, pid: int, metrics: int) -> dict:
+    def _json_call(func, pid: int, metrics: int, _buffer_size: int = 4096) -> dict:
         """
         Internal helper method to call a DLL function that returns JSON data
         in a buffer, parse it, and return as a Python dictionary.
@@ -100,6 +69,7 @@ class ProcessMetrics:
             func (callable): DLL function to call, which fills a buffer with JSON.
             pid (int): Process ID to query.
             metrics (int): Bitmask of metrics flags to request.
+            _buffer_size (int): Size of the buffer to hold JSON data (default 4096 bytes).
 
         Returns:
             dict: Parsed JSON metrics.
@@ -107,7 +77,7 @@ class ProcessMetrics:
         Raises:
             RuntimeError: If the DLL function call returns failure.
         """
-        buf = create_string_buffer(4096)  # buffer size fixed to 4 KB
+        buf = create_string_buffer(_buffer_size)  # buffer size fixed to 4 KB
         success = func(pid, metrics, buf, ctypes.sizeof(buf))
         if not success:
             raise RuntimeError(f"Metric collection failed for PID {pid}")
