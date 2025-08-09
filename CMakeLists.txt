@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(example/pyCTools C)
+project(pyCTools C)
 
 set(CMAKE_C_STANDARD 11)
 
