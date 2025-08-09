@@ -1,22 +1,29 @@
 """
-hwrng_example.py
+hwrng.py
 
-Hardware Random Number Generator (RDRAND) interface for Python using ctypes and a custom DLL.
+Hardware Random Number Generator interface for Python using ctypes and the new hRng.dll.
 """
 
 import ctypes
 import os
 import platform
 
-__all__ = ["get_hardware_random_bytes", "HardwareRNGError"]
+__all__ = [
+    "get_hardware_random_bytes",
+    "get_hardware_random_bytes_threadsafe",
+    "get_hardware_random_bytes_extended",
+    "hardware_rng_selftest",
+    "HardwareRNGError"
+]
 
 
 class HardwareRNGError(RuntimeError):
     """Raised when hardware RNG fails or DLL cannot be loaded."""
-    pass
+    def __init__(self, message="Hardware RNG error occurred"):
+        super().__init__(message)
 
 
-def _load_rng_function():
+def _load_rng_functions():
     arch = 'x64' if platform.architecture()[0] == '64bit' else 'x86'
     dll_name = f'hRng_{arch}.dll'
     base_dir = os.path.dirname(__file__)
@@ -38,43 +45,121 @@ def _load_rng_function():
 
     dll = ctypes.CDLL(dll_path)
 
-    # Setup and return the function
-    func = dll.read_hwrng
-    func.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int]
-    func.restype = ctypes.c_int
-    return func
+    # Setup function signatures
+    MaxRNG = dll.MaxRNG
+    MaxRNG.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int]
+    MaxRNG.restype = ctypes.c_int
+
+    MaxRNG_ThreadSafe = dll.MaxRNG_ThreadSafe
+    MaxRNG_ThreadSafe.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int]
+    MaxRNG_ThreadSafe.restype = ctypes.c_int
+
+    MaxRNG_Extended = dll.MaxRNG_Extended
+    MaxRNG_Extended.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int, ctypes.c_int]
+    MaxRNG_Extended.restype = ctypes.c_int
+
+    RNG_SelfTest = dll.RNG_SelfTest
+    RNG_SelfTest.argtypes = []
+    RNG_SelfTest.restype = ctypes.c_int
+
+    return MaxRNG, MaxRNG_ThreadSafe, MaxRNG_Extended, RNG_SelfTest
 
 
-# Load the function only once
-_read_hwrng = _load_rng_function()
+# Load the functions only once
+_MaxRNG, _MaxRNG_ThreadSafe, _MaxRNG_Extended, _RNG_SelfTest = _load_rng_functions()
 
 
 def get_hardware_random_bytes(size: int) -> bytes:
     """
-        Retrieve cryptographically secure random bytes from the hardware RNG via a custom DLL.
+    Retrieve cryptographically secure random bytes from MaxRNG.
 
-        Args:
-            size (int): The number of random bytes to generate. Must be a positive integer.
+    Args:
+        size (int): Number of random bytes to generate.
 
-        Returns:
-            bytes: A bytes object containing `size` random bytes from the hardware RNG.
+    Returns:
+        bytes: Random bytes.
 
-        Raises:
-            ValueError: If `size` is not a positive integer.
-            HardwareRNGError: If the hardware RNG fails or is not supported on this system.
-
-        Example:
-            >>> random_bytes = get_hardware_random_bytes(16)
-            >>> len(random_bytes)
-            16
+    Raises:
+        ValueError: If size is not positive.
+        HardwareRNGError: If the RNG fails.
     """
     if size <= 0:
         raise ValueError("Size must be a positive integer")
 
     buffer = (ctypes.c_ubyte * size)()
-    success = _read_hwrng(buffer, size)
-
+    success = _MaxRNG(buffer, size)
     if not success:
-        raise HardwareRNGError("Hardware RNG failed or RDRAND not supported.")
+        raise HardwareRNGError("MaxRNG failed.")
+    return bytes(buffer)
+
+
+def get_hardware_random_bytes_threadsafe(size: int) -> bytes:
+    """
+    Retrieve random bytes using the thread-safe MaxRNG_ThreadSafe.
+
+    Args:
+        size (int): Number of random bytes to generate.
+
+    Returns:
+        bytes: Random bytes.
+
+    Raises:
+        ValueError: If size is not positive.
+        HardwareRNGError: If the RNG fails.
+    """
+    if size <= 0:
+        raise ValueError("Size must be a positive integer")
+
+    buffer = (ctypes.c_ubyte * size)()
+
+    try:
+        result = _MaxRNG_ThreadSafe(buffer, size)
+    except Exception as e:
+        raise HardwareRNGError(f"Exception calling MaxRNG_ThreadSafe: {e}")
+
+    if result == 0:
+        raise HardwareRNGError("MaxRNG_ThreadSafe returned failure code.")
+
+    # Defensive: verify buffer is not all zeros (very unlikely)
+    if all(b == 0 for b in buffer):
+        raise HardwareRNGError("RNG returned all-zero buffer — suspicious result.")
 
     return bytes(buffer)
+
+
+# TODO Benchmark all with proper graphs and tests
+def get_hardware_random_bytes_extended(size: int, intensive_level: int = 2) -> bytes:
+    """
+    Retrieve random bytes using MaxRNG_Extended.
+
+    Args:
+        size (int): Number of random bytes to generate.
+        intensive_level (int): Entropy gathering intensity (>=1).
+
+    Returns:
+        bytes: Random bytes.
+
+    Raises:
+        ValueError: If size or intensive_level is not positive.
+        HardwareRNGError: If the RNG fails.
+    """
+    if size <= 0:
+        raise ValueError("Size must be a positive integer")
+    if intensive_level < 1:
+        raise ValueError("intensive_level must be >= 1")
+
+    buffer = (ctypes.c_ubyte * size)()
+    success = _MaxRNG_Extended(buffer, size, intensive_level)
+    if not success:
+        raise HardwareRNGError("MaxRNG_Extended failed.")
+    return bytes(buffer)
+
+
+def hardware_rng_selftest() -> bool:
+    """
+    Run the RNG self-test.
+
+    Returns:
+        bool: True if self-test passes, False otherwise.
+    """
+    return bool(_RNG_SelfTest())
