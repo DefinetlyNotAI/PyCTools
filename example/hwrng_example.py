@@ -3,10 +3,10 @@ import threading
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from pyCTools.hwrng import MaxRNG
+from pyCTools import MaxRNG
 
 rng = MaxRNG()
-rng.dll.maxrng_init()
+rng.dll.maxrng_init()  # Initialize the RNG for threads, Without this threading will raise RuntimeError
 
 print("RDRAND supported:", rng.test_rng_available())
 print("Threading available:", rng.test_threading_available())

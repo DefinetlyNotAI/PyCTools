@@ -70,6 +70,11 @@ class MaxRNG:
         return bytes(buf)
 
     def maxrng_threadsafe(self, size: int) -> bytes:
+        if not self.test_threading_available():
+            raise RuntimeError("Threading is not available in this RNG implementation.\n"
+                               "[?] Have you called 'MaxRNG().dll.maxrng_init()' before using 'MaxRNG().maxrng_threadsafe()'.\n"
+                               "[!] Best practice is to call 'MaxRNG().test_threading_available()' and only run 'MaxRNG().maxrng_threadsafe()' if the returned value is True.")
+
         buf = (ctypes.c_ubyte * size)()
         success = self.dll.maxrng_threadsafe(buf, size)
         if not success:
