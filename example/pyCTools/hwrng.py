@@ -10,7 +10,6 @@ import platform
 
 __all__ = [
     "get_hardware_random_bytes",
-    "get_hardware_random_bytes_threadsafe",
     "get_hardware_random_bytes_extended",
     "hardware_rng_selftest",
     "HardwareRNGError"
@@ -90,40 +89,6 @@ def get_hardware_random_bytes(size: int) -> bytes:
     success = _MaxRNG(buffer, size)
     if not success:
         raise HardwareRNGError("MaxRNG failed.")
-    return bytes(buffer)
-
-
-def get_hardware_random_bytes_threadsafe(size: int) -> bytes:
-    """
-    Retrieve random bytes using the thread-safe MaxRNG_ThreadSafe.
-
-    Args:
-        size (int): Number of random bytes to generate.
-
-    Returns:
-        bytes: Random bytes.
-
-    Raises:
-        ValueError: If size is not positive.
-        HardwareRNGError: If the RNG fails.
-    """
-    if size <= 0:
-        raise ValueError("Size must be a positive integer")
-
-    buffer = (ctypes.c_ubyte * size)()
-
-    try:
-        result = _MaxRNG_ThreadSafe(buffer, size)
-    except Exception as e:
-        raise HardwareRNGError(f"Exception calling MaxRNG_ThreadSafe: {e}")
-
-    if result == 0:
-        raise HardwareRNGError("MaxRNG_ThreadSafe returned failure code.")
-
-    # Defensive: verify buffer is not all zeros (very unlikely)
-    if all(b == 0 for b in buffer):
-        raise HardwareRNGError("RNG returned all-zero buffer — suspicious result.")
-
     return bytes(buffer)
 
 

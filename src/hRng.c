@@ -567,53 +567,12 @@ HRNG_API int RNG_SelfTest(void) {
     return success;
 }
 
-static CRITICAL_SECTION g_initMutex;
-static CRITICAL_SECTION g_rngMutex;
-static volatile LONG g_rngInitialized = 0; // atomic flag (0 = false, 1 = true)
-
-static void InitializeRNG() {
-    // Double-checked locking pattern:
-    if (InterlockedCompareExchange(&g_rngInitialized, 1, 1) == 0) {
-        // Acquire init mutex to synchronize
-        EnterCriticalSection(&g_initMutex);
-
-        if (g_rngInitialized == 0) {
-            InitializeCriticalSection(&g_rngMutex);
-            g_rngInitialized = 1;
-        }
-
-        LeaveCriticalSection(&g_initMutex);
-    }
-}
-
-HRNG_API int MaxRNG_ThreadSafe(unsigned char* buffer, const int size) {
-    if (g_rngInitialized == 0) {
-        InitializeRNG();
-    }
-
-    EnterCriticalSection(&g_rngMutex);
-    int result = MaxRNG(buffer, size);
-    LeaveCriticalSection(&g_rngMutex);
-
-    return result;
-}
-
-// DLL main entry point
-BOOL WINAPI DllMain(const DWORD fdwReason) {
-    switch (fdwReason) {
-        case DLL_PROCESS_ATTACH:
-            // Initialize RNG when DLL is loaded
-            InitializeRNG();
-            break;
-        case DLL_PROCESS_DETACH:
-            // Clean up resources if needed
-            if (g_rngInitialized) {
-                DeleteCriticalSection(&g_rngMutex);
-                g_rngInitialized = 0;
-            }
-            break;
-        default:
-            break;
+// DLL main entry point - simplified without thread safety components
+// ReSharper disable once CppParameterMayBeConst
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, const DWORD fdwReason) {
+    if (fdwReason == DLL_PROCESS_ATTACH) {
+        // Disable thread notifications for better performance
+        DisableThreadLibraryCalls(hinstDLL);
     }
     return TRUE;
 }
