@@ -10,67 +10,98 @@ This project provides a cross-language toolkit for Windows process inspection an
 > [!IMPORTANT]
 > To get the `dist` binary folder, choose **one** of the following options:
 >
-> | Method                       | Description                                                                                      | Requirements                                                   |
-> |-----------------------------|--------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-> | Manual Build                | Compile the binaries yourself using `cl.exe` or similar toolchains                               | Microsoft Visual Studio with MSVC installed                    |
-> | Auto Build Script           | Run the [`tool/compilerHelper.ps1`](https://github.com/DefinetlyNotAI/PyCTools/blob/main/tool/compilerHelper.ps1) PowerShell script | Visual Studio Build Tools + PowerShell                         |
-> | Prebuilt Release Archive    | Download precompiled binaries from the [releases page](https://github.com/DefinetlyNotAI/PyCTools/releases/tag/v1.0.0)              | None (just extract archive)                                    |
+> | Method                   | Description                                                                                                  | Requirements                                        |
+> |--------------------------|--------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+> | Manual Build             | Compile the binaries yourself using `cl.exe` or similar toolchains                                           | Microsoft Visual Studio with MSVC installed         |
+> | Auto Build Script        | Run the [`tool/compilerHelper.ps1`](tool/compilerHelper.ps1) PowerShell script                               | Visual Studio Build Tools + PowerShell              |
+> | Prebuilt Release Archive | Download precompiled binaries from the [releases page](https://github.com/DefinetlyNotAI/PyCTools/releases/) | None, make sure to use the latest available version |
 >
-> No matter what you decide, do still read the important notice about the `dist` from the [release](https://github.com/DefinetlyNotAI/PyCTools/releases/tag/v1.0.0) OR check the [Wiki](https://github.com/DefinetlyNotAI/PyCTools/wiki/DLL-Discovery) page about the DLL discovery explanation.
+> No matter what you decide, do still read the important notice about the `dist` from the [release](https://github.com/DefinetlyNotAI/PyCTools/releases/) OR check the [Wiki](https://github.com/DefinetlyNotAI/PyCTools/wiki#dll-discovery-and-dist-directory) page about the DLL discovery explanation.
 
 ## Directory Structure
 
 <details>
   <summary>📁 Project Structure (click to expand)</summary>
 
-    example/
-      pyCTools/
-        hwrng.py           # Python wrapper for hardware RNG DLL
-        processInspect.py  # Python wrapper for process inspection DLL
-      hwrng_example.py     # Example: hardware RNG usage
-      process_inspect_example.py # Example: process metrics usage
-    src/
-      hRng.c               # C source for hardware RNG DLL
-      processInspect.c     # C source for process inspection DLL
-    tool/
-      compilerHelper.ps1   # PowerShell script to build DLLs for x86/x64
-    dist/
-      x64/                 # Compiled DLLs for 64-bit
-      x86/                 # Compiled DLLs for 32-bit
+    root/
+    ├── bin/                               # Auto-generated folder containing compiled DLL binaries
+    │   ├── x86/                           # 32-bit DLL builds
+    │   └── x64/                           # 64-bit DLL builds
+    │
+    ├── dist/                              # Release artifacts for distribution
+    │   ├── bin.zip                        # Zipped prebuilt binaries
+    │   └── bin.zip.sha256                 # SHA256 checksum for `bin.zip`
+    │
+    ├── examples/                          # Example Python scripts demonstrating usage
+    │   ├── hwrng_example.py               # Example: Hardware RNG usage
+    │   ├── process_inspect_example.py     # Example: Process inspection usage
+    │   └── rng_tests/                     # RNG test scripts and outputs
+    │       ├── rng_output.bin              # 10M bytes of RNG data (complexity 1, threaded)
+    │       ├── rng_entropy_output.png      # PNG entropy visualization of RNG output
+    │       ├── Results.txt                 # Test results from `rng_test.py`
+    │       ├── rng_test.py                 # Script to test hardware RNG
+    │       └── generate_bin.py             # Generates binary file from RNG
+    │
+    ├── pyCTools/                          # Python package (library code)
+    │   ├── __init__.py                    # Package initializer
+    │   ├── hwrng.py                       # Hardware RNG DLL wrapper
+    │   ├── processInspect.py               # Process inspection DLL wrapper
+    │   └── _loadDLL.py                     # DLL loading logic used by wrappers
+    │
+    ├── tool/                              # Build and distribution tools
+    │   ├── compilerHelper.ps1              # Compiles C code into DLLs
+    │   └── distributionHelper.ps1          # Creates `bin.zip` and SHA256 checksum
+    │
+    ├── src/                               # C source code for DLLs
+    │   ├── hRng.c                          # Hardware RNG implementation
+    │   └── processInspect.c                # Process inspection implementation
+    │
+    └── CMakeLists.txt                     # CMake build configuration (currently unused)
 
 </details>
 
 ## Building the DLLs
 
-1. Open PowerShell and run `tool/compilerHelper.ps1`.
-2. Select which `.c` files to compile.
-3. The script will build both x86 and x64 DLLs and place them in `dist/x86` and `dist/x64`.
+1. Open **PowerShell** and run:
+   ```powershell
+   cd ./tool/
+   compilerHelper.ps1
+   ```
+   
+2. Choose the `.c` source files you want to compile.
+
+3. The script will compile for **both x86 and x64** architectures, placing the output in:
+   - `bin/x86` (32-bit builds)
+   - `bin/x64` (64-bit builds)
+
+> [!IMPORTANT]
+> The build process uses `cl.exe` from the **MSVC toolchain** in Visual Studio, so make sure it’s installed and available in your PATH.
+    
+> [!NOTE]
+> - Each compiled source produces **four files per architecture**: `.dll`, `.exp`, `.lib`, and `.obj`.
+>
+> - Only the `.dll` is needed by the Python library.
+> 
+> - DLL filenames include an architecture suffix:
+>
+>   - Example: `hRng_x86.dll`, `hRng_x64.dll`.
 
 ## Using the Python Library
 
-- Place the `dist/` folder as a sibling to your Python scripts or as described in the wrappers.
-- Import and use `pyCTools.hwrng` or `pyCTools.processInspect` as shown in the examples.
+- Place the `dist/` folder inside the `pyCTools` package directory, or at max two levels up the library.
+- Import and use `hwrng` or `processInspect` from `pyCTools`.
+- The library will automatically load the correct DLL based on your Python interpreter architecture (x86 or x64).
 
-## Example Usage
+> [!TIP]
+> Example usages for both modules in detail:
+> 
+> #### Hardware RNG
+> Either check out the [example script](example/hwrng_example.py) or the [Wiki page](https://github.com/DefinetlyNotAI/PyCTools/wiki/Py-Documentation-‐-hwrng#methods)
+> 
+> #### Process Inspection
+> Either check out the [example script](example/process_inspect_example.py) or the [Wiki page](https://github.com/DefinetlyNotAI/PyCTools/wiki/Py-Documentation-‐-processInspect#methods)
 
-**Hardware RNG:**
-```python
-from pyCTools.hwrng import get_hardware_random_bytes
-rb = get_hardware_random_bytes(16)
-print(rb.hex())
-```
-
-**Process Inspection:**
-```python
-from pyCTools.processInspect import ProcessMetrics
-metrics = ProcessMetrics()
-pid = 1234  # Target PID
-flags = ProcessMetrics.METRIC_WORKING_SET | ProcessMetrics.METRIC_CPU_USAGE
-snapshot = metrics.get_snapshot(pid, flags)
-print(snapshot)
-```
-
-## DLL Discovery
+### DLL Discovery
 
 The Python wrappers automatically search for the correct DLL in:
 - `./dist/{arch}/<dll>`
@@ -78,6 +109,8 @@ The Python wrappers automatically search for the correct DLL in:
 - `../../dist/{arch}/<dll>`
 
 where `{arch}` is `x64` or `x86` depending on your Python interpreter.
+
+> More details on how the DLL discovery works can be found in the [Wiki page](https://github.com/DefinetlyNotAI/PyCTools/wiki#dll-discovery-and-dist-directory)
 
 ## Extra resources
 
@@ -87,4 +120,3 @@ where `{arch}` is `x64` or `x86` depending on your Python interpreter.
 > • **DLL explanations**: learn how the DLLs are structured, discovered, and loaded 
 > • **Python examples, wrappers, and usage**: practical code snippets and usage patterns in Python 
 > • **C code explanation**: understand the underlying native implementation
-
