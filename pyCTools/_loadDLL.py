@@ -1,62 +1,54 @@
+import ctypes
 import os
 import platform
-import ctypes
-from typing import Callable, Optional, List
+from typing import Callable, Optional
 
 
 def load_dll(
         dll_prefix_name: str,
         dll_load_func: Callable = ctypes.WinDLL,
-        possible_bin_paths: Optional[List[str]] = None,
         hardcoded_dll_location: Optional[str] = None
 ):
     """
-    Load a DLL file based on architecture and search paths, returning the loaded DLL handle.
+    Loads a Windows DLL with architecture awareness and optional custom path.
 
-    This function attempts to locate and load a DLL file matching the current system's
-    architecture (x86 or x64). The DLL filename is constructed by appending the architecture
-    suffix to a given prefix name (e.g., "processInspect_x64.dll").
+    This function attempts to load a dynamic-link library (DLL) based on the provided prefix name,
+    automatically selecting the correct architecture (x64 or x86) according to the current Python
+    interpreter. The DLL is expected to be located in a subdirectory structure of the form:
+    ./bin/{arch}/{dll_prefix_name}_{arch}.dll, where {arch} is either 'x64' or 'x86'.
 
-    You can specify a hardcoded absolute DLL path or provide a list of possible relative
-    distribution paths to search through. If both are provided, the function raises a ValueError.
+    Alternatively, a hardcoded DLL path can be provided, in which case the function will verify
+    the existence of the file at that location before attempting to load it.
 
-    Args:
-        dll_prefix_name (str):
-            The base name of the DLL without architecture or extension.
-            For example, for "processInspect_x64.dll", the prefix is "processInspect".
+    Parameters
+    ----------
+    dll_prefix_name : str
+        The prefix of the DLL filename (e.g., 'myLibrary' for 'myLibrary_x64.dll').
+    dll_load_func : Callable, optional
+        The function used to load the DLL. Defaults to ctypes.WinDLL, but can be replaced with
+        ctypes.CDLL or any compatible loader for testing or non-standard DLLs.
+    hardcoded_dll_location : Optional[str], optional
+        An explicit path to the DLL file. If provided and valid, this path is used instead of
+        constructing the path from the prefix and architecture.
 
-        dll_load_func (Callable, optional):
-            The function used to load the DLL, typically `ctypes.WinDLL` or `ctypes.CDLL`.
-            Defaults to `ctypes.WinDLL`.
+    Returns
+    -------
+    ctypes.CDLL or ctypes.WinDLL
+        The loaded DLL object, as returned by the specified loader function.
 
-        possible_bin_paths (Optional[List[str]], optional):
-            A list of possible relative paths where the DLL might reside. These are
-            joined with the DLL filename and searched in order.
-            Defaults to None, which triggers searching in default distribution directories.
+    Raises
+    ------
+    FileNotFoundError
+        If the DLL cannot be found at the constructed or provided path.
+    OSError
+        If the DLL fails to load due to an invalid format or missing dependencies.
 
-        hardcoded_dll_location (Optional[str], optional):
-            An absolute path to the DLL. If provided, this path is used exclusively,
-            bypassing the search logic.
-
-    Raises:
-        ValueError:
-            If both `hardcoded_dll_location` and `possible_dist_paths` are provided
-            simultaneously.
-
-        FileNotFoundError:
-            If the DLL cannot be found at the specified or searched locations.
-
-    Returns:
-        ctypes.WinDLL or ctypes.CDLL:
-            The loaded DLL object returned by the provided `dll_load_func`.
-
-    Example:
-        dll = load_dll("processInspect")
+    Notes
+    -----
+    - This function is intended for use on Windows platforms.
+    - The architecture is determined by the running Python interpreter, not the OS alone.
+    - The default search path assumes a project structure with DLLs in 'bin/x64' or 'bin/x86'.
     """
-
-    # Validate mutually exclusive parameters
-    if hardcoded_dll_location and possible_bin_paths:
-        raise ValueError("Cannot provide both hardcoded_dll_location and possible_dist_paths.")
 
     # Determine system architecture to pick the correct DLL version
     arch = 'x64' if platform.architecture()[0] == '64bit' else 'x86'
@@ -64,39 +56,13 @@ def load_dll(
     # Construct DLL filename based on prefix and architecture suffix
     dll_name = f'{dll_prefix_name}_{arch}.dll'
 
-    # Base directory is the directory where this script resides
-    base_dir = os.path.abspath(os.path.dirname(__file__))
-
-    if hardcoded_dll_location:
-        # If hardcoded path is provided, use it after verifying it exists
+    # If hardcoded path is provided, use it after verifying it exists
+    if hardcoded_dll_location is None:
+        dll_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'bin', arch, dll_name))
+    elif os.path.isfile(hardcoded_dll_location):
         dll_path = os.path.abspath(hardcoded_dll_location)
-        if not os.path.isfile(dll_path):
-            raise FileNotFoundError(f"Hardcoded DLL location does not exist: {dll_path}")
     else:
-        # If no hardcoded path, define default search paths if not provided
-        if possible_bin_paths is None:
-            # Common fallback directories where DLL might be located relative to this file
-            possible_bin_paths = [
-                os.path.join(base_dir, 'bin', arch, dll_name),
-                os.path.join(base_dir, '..', 'bin', arch, dll_name),
-                os.path.join(base_dir, '..', '..', 'bin', arch, dll_name),
-            ]
-
-        # Convert all candidate paths to absolute paths
-        abs_paths = [os.path.abspath(p) for p in possible_bin_paths]
-
-        # Find the first path where the DLL file actually exists
-        dll_path = next((p for p in abs_paths if os.path.isfile(p)), None)
-
-        # If no valid DLL file was found, raise error with detailed info
-        if dll_path is None:
-            raise FileNotFoundError(
-                f"Could not find {dll_name} DLL in any of the expected locations:\n" +
-                "\n".join(abs_paths)
-            )
-
-    # Inform user about which DLL path is being loaded
-    print(f"Loading {dll_path} DLL...")
+        raise FileNotFoundError(f"Hardcoded DLL location does not exist: {hardcoded_dll_location}")
 
     # Load and return the DLL using the specified loading function
     return dll_load_func(dll_path)

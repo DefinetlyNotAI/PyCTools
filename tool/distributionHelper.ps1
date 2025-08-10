@@ -15,7 +15,7 @@ try {
     # Move one directory up
     Set-Location ..
 
-    $binPath = Join-Path (Get-Location) "bin"
+    $binPath = Join-Path (Join-Path (Get-Location) "pyCTools") "bin"
 
     if (-not (Test-Path $binPath -PathType Container)) {
         $binPath = Read-Host "bin folder not found. [Have you executed 'compilerHelper.ps1'?] => Please enter the full path to the bin folder"
@@ -89,7 +89,7 @@ try {
     Write-Host "bin folder validated successfully."
 
     # Create dist folder if not exists
-    $distPath = Join-Path (Split-Path $binPath -Parent) "dist"
+    $distPath = Join-Path (Split-Path (Split-Path $binPath -Parent) -Parent) "dist"
     if (-not (Test-Path $distPath)) {
         New-Item -Path $distPath -ItemType Directory -ErrorAction Stop | Out-Null
         Write-Host "Created dist folder at $distPath"

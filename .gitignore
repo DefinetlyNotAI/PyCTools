@@ -115,3 +115,4 @@ dmypy.json
 .pytype/
 cython_debug/
 /bin/
+/pyCTools/bin/

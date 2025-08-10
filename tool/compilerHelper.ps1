@@ -40,7 +40,7 @@ if ($filesToCompile.Count -eq 0) {
 }
 
 # --- CLEANUP: Remove .obj/.dll/.lib/.exp in root and move all outputs to bin/{arch} ---
-$binRoot = "..\bin"
+$binRoot = "..\pyCTools\bin"
 $x64Folder = Join-Path $binRoot "x64"
 $x86Folder = Join-Path $binRoot "x86"
 
