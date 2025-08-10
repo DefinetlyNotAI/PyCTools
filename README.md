@@ -1,4 +1,10 @@
-# Project Overview
+<div style="text-align: center;">
+  <h1>PyCTools</h1>
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
+  <img src="https://img.shields.io/badge/platform-Windows-lightgray" alt="Platform" />
+  <img src="https://img.shields.io/github/languages/top/DefinetlyNotAI/PyCTools" alt="Languages" />
+  <img src="https://img.shields.io/github/v/tag/DefinetlyNotAI/PyCTools" alt="Version" />
+</div>
 
 This project provides a cross-language toolkit for Windows process inspection and hardware random number generation, with both Python and C components. It includes:
 
