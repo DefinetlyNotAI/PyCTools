@@ -39,13 +39,13 @@ if ($filesToCompile.Count -eq 0) {
     exit 1
 }
 
-# --- CLEANUP: Remove .obj/.dll/.lib/.exp in root and move all outputs to dist/arch ---
-$distRoot = "..\dist"
-$x64Folder = Join-Path $distRoot "x64"
-$x86Folder = Join-Path $distRoot "x86"
+# --- CLEANUP: Remove .obj/.dll/.lib/.exp in root and move all outputs to bin/{arch} ---
+$binRoot = "..\bin"
+$x64Folder = Join-Path $binRoot "x64"
+$x86Folder = Join-Path $binRoot "x86"
 
 # Create output folders
-foreach ($folder in @($distRoot, $x64Folder, $x86Folder)) {
+foreach ($folder in @($binRoot, $x64Folder, $x86Folder)) {
     if (-not (Test-Path $folder)) {
         New-Item -ItemType Directory -Path $folder | Out-Null
         Write-Host "Created folder: $folder"
@@ -55,7 +55,7 @@ foreach ($folder in @($distRoot, $x64Folder, $x86Folder)) {
     }
 }
 
-# Remove build artifacts from root (not in dist)
+# Remove build artifacts from root (not in bin)
 $extensionsToClean = @("*.obj", "*.dll", "*.lib", "*.exp")
 foreach ($ext in $extensionsToClean) {
     Get-ChildItem -Path . -Filter $ext -File | Remove-Item -Force -ErrorAction SilentlyContinue
@@ -168,7 +168,7 @@ exit /b %errorlevel%
     return $true
 }
 
-# Compile each file as its own DLL for x64 and x86, outputs in dist/x64 and dist/x86
+# Compile each file as its own DLL for x64 and x86, outputs in bin/x64 and bin/x86
 foreach ($file in $filesToCompile) {
     if (-not (CompileDll -Arch "x64" -OutFolder $x64Folder -File $file)) {
         Write-CustomError "x64 build failed for $file."

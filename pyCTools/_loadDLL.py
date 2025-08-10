@@ -7,7 +7,7 @@ from typing import Callable, Optional, List
 def load_dll(
         dll_prefix_name: str,
         dll_load_func: Callable = ctypes.WinDLL,
-        possible_dist_paths: Optional[List[str]] = None,
+        possible_bin_paths: Optional[List[str]] = None,
         hardcoded_dll_location: Optional[str] = None
 ):
     """
@@ -29,7 +29,7 @@ def load_dll(
             The function used to load the DLL, typically `ctypes.WinDLL` or `ctypes.CDLL`.
             Defaults to `ctypes.WinDLL`.
 
-        possible_dist_paths (Optional[List[str]], optional):
+        possible_bin_paths (Optional[List[str]], optional):
             A list of possible relative paths where the DLL might reside. These are
             joined with the DLL filename and searched in order.
             Defaults to None, which triggers searching in default distribution directories.
@@ -55,7 +55,7 @@ def load_dll(
     """
 
     # Validate mutually exclusive parameters
-    if hardcoded_dll_location and possible_dist_paths:
+    if hardcoded_dll_location and possible_bin_paths:
         raise ValueError("Cannot provide both hardcoded_dll_location and possible_dist_paths.")
 
     # Determine system architecture to pick the correct DLL version
@@ -74,16 +74,16 @@ def load_dll(
             raise FileNotFoundError(f"Hardcoded DLL location does not exist: {dll_path}")
     else:
         # If no hardcoded path, define default search paths if not provided
-        if possible_dist_paths is None:
+        if possible_bin_paths is None:
             # Common fallback directories where DLL might be located relative to this file
-            possible_dist_paths = [
-                os.path.join(base_dir, 'dist', arch, dll_name),
-                os.path.join(base_dir, '..', 'dist', arch, dll_name),
-                os.path.join(base_dir, '..', '..', 'dist', arch, dll_name),
+            possible_bin_paths = [
+                os.path.join(base_dir, 'bin', arch, dll_name),
+                os.path.join(base_dir, '..', 'bin', arch, dll_name),
+                os.path.join(base_dir, '..', '..', 'bin', arch, dll_name),
             ]
 
         # Convert all candidate paths to absolute paths
-        abs_paths = [os.path.abspath(p) for p in possible_dist_paths]
+        abs_paths = [os.path.abspath(p) for p in possible_bin_paths]
 
         # Find the first path where the DLL file actually exists
         dll_path = next((p for p in abs_paths if os.path.isfile(p)), None)

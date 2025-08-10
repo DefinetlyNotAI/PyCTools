@@ -15,26 +15,26 @@ try {
     # Move one directory up
     Set-Location ..
 
-    $distPath = Join-Path (Get-Location) "dist"
+    $binPath = Join-Path (Get-Location) "bin"
 
-    if (-not (Test-Path $distPath -PathType Container)) {
-        $distPath = Read-Host "dist folder not found. Please enter the full path to the dist folder"
-        if (-not (Test-Path $distPath -PathType Container)) {
-            Write-CustomError "Provided dist path does not exist or is not a directory."
+    if (-not (Test-Path $binPath -PathType Container)) {
+        $binPath = Read-Host "bin folder not found. [Have you executed 'compilerHelper.ps1'?] => Please enter the full path to the bin folder"
+        if (-not (Test-Path $binPath -PathType Container)) {
+            Write-CustomError "Provided bin path does not exist or is not a directory."
             exit 1
         }
     }
 
-    # Validate dist structure
-    $x64Path = Join-Path $distPath "x64"
-    $x86Path = Join-Path $distPath "x86"
+    # Validate bin structure
+    $x64Path = Join-Path $binPath "x64"
+    $x86Path = Join-Path $binPath "x86"
 
     if (-not (Test-Path $x64Path -PathType Container)) {
-        Write-CustomError "x64 folder is missing inside dist."
+        Write-CustomError "x64 folder is missing inside bin."
         exit 1
     }
     if (-not (Test-Path $x86Path -PathType Container)) {
-        Write-CustomError "x86 folder is missing inside dist."
+        Write-CustomError "x86 folder is missing inside bin."
         exit 1
     }
 
@@ -86,23 +86,23 @@ try {
         }
     }
 
-    Write-Host "dist folder validated successfully."
+    Write-Host "bin folder validated successfully."
 
-    # Create bin folder if not exists
-    $binPath = Join-Path (Split-Path $distPath -Parent) "bin"
-    if (-not (Test-Path $binPath)) {
-        New-Item -Path $binPath -ItemType Directory -ErrorAction Stop | Out-Null
-        Write-Host "Created bin folder at $binPath"
+    # Create dist folder if not exists
+    $distPath = Join-Path (Split-Path $binPath -Parent) "dist"
+    if (-not (Test-Path $distPath)) {
+        New-Item -Path $distPath -ItemType Directory -ErrorAction Stop | Out-Null
+        Write-Host "Created dist folder at $distPath"
     } else {
-        Write-Host "bin folder already exists at $binPath"
+        Write-Host "dist folder already exists at $distPath"
     }
 
-    # Compress dist folder to ZIP
-    $zipFile = Join-Path $binPath "dist.zip"
+    # Compress bin folder to ZIP
+    $zipFile = Join-Path $distPath "bin.zip"
 
     if (Test-Path $zipFile) { Remove-Item $zipFile -Force }
     try {
-        Compress-Archive -Path (Join-Path $distPath '*') -DestinationPath $zipFile -Force
+        Compress-Archive -Path (Join-Path $binPath '*') -DestinationPath $zipFile -Force
         Write-Host "ZIP archive created at $zipFile"
     }
     catch {
