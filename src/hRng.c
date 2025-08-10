@@ -210,13 +210,70 @@ static int collect_entropy(unsigned char *buffer, const int size, const int comp
         }
     }
 
-    // Copy requested bytes (repeat hash output if needed)
-    for (int i = 0; i < size; i++)
-    {
-        buffer[i] = hash[i % cbHash];
+    // Generate unique random bytes for the entire buffer
+    // First, copy the initial hash block
+    DWORD bytesRemaining = (DWORD)size;
+    DWORD offset = 0;
+
+    // Copy first block (up to 32 bytes)
+    DWORD bytesToCopy = (bytesRemaining < cbHash) ? bytesRemaining : cbHash;
+    memcpy(buffer, hash, bytesToCopy);
+    bytesRemaining -= bytesToCopy;
+    offset += bytesToCopy;
+
+    // For larger buffers, we need to generate additional unique blocks
+    if (bytesRemaining > 0) {
+        // Create new hash for additional blocks
+        status = BCryptDestroyHash(hHash);
+        if (!BCRYPT_SUCCESS(status)) {
+            BCryptCloseAlgorithmProvider(hAlg, 0);
+            return 0;
+        }
+
+        // Use counter mode to generate unique blocks
+        uint32_t counter = 1; // Start from 1 since we already used block 0
+
+        while (bytesRemaining > 0) {
+            status = BCryptCreateHash(hAlg, &hHash, NULL, 0, NULL, 0, 0);
+            if (!BCRYPT_SUCCESS(status)) {
+                BCryptCloseAlgorithmProvider(hAlg, 0);
+                return 0;
+            }
+
+            // Hash the previous output + counter for chaining
+            status = BCryptHashData(hHash, hash, cbHash, 0);
+            if (!BCRYPT_SUCCESS(status)) {
+                BCryptDestroyHash(hHash);
+                BCryptCloseAlgorithmProvider(hAlg, 0);
+                return 0;
+            }
+
+            status = BCryptHashData(hHash, (PUCHAR)&counter, sizeof(counter), 0);
+            if (!BCRYPT_SUCCESS(status)) {
+                BCryptDestroyHash(hHash);
+                BCryptCloseAlgorithmProvider(hAlg, 0);
+                return 0;
+            }
+
+            // Generate next block
+            status = BCryptFinishHash(hHash, hash, cbHash, 0);
+            if (!BCRYPT_SUCCESS(status)) {
+                BCryptDestroyHash(hHash);
+                BCryptCloseAlgorithmProvider(hAlg, 0);
+                return 0;
+            }
+
+            // Copy to output buffer
+            bytesToCopy = (bytesRemaining < cbHash) ? bytesRemaining : cbHash;
+            memcpy(buffer + offset, hash, bytesToCopy);
+            bytesRemaining -= bytesToCopy;
+            offset += bytesToCopy;
+            counter++;
+
+            BCryptDestroyHash(hHash);
+        }
     }
 
-    BCryptDestroyHash(hHash);
     BCryptCloseAlgorithmProvider(hAlg, 0);
     return 1;
 }
