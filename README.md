@@ -6,6 +6,19 @@
   <img src="https://img.shields.io/github/v/tag/DefinetlyNotAI/PyCTools" alt="Version" />
 </div>
 
+> [!NOTE]
+> There are multiple ways to install the pyCTools library!
+>
+> * **Manual installation:**
+>
+>   1. Clone the repository and build the DLLs yourself.
+>   2. Run `python ./tools/setup.py bdist_wheel` to create the wheel file.
+>   3. The setup script will show you how to install the package locally with pip and how to create a virtual environment for testing.
+> * **Automatic installation:**
+>   Go to the [releases page](https://github.com/DefinetlyNotAI/PyCTools/releases) and select the version you wish to install, and click on it, then copy the top `pip` command that will allow you to install it
+>   [Auto installation support from v0.2.0-beta and above]
+
+
 This project provides a cross-language toolkit for Windows process inspection and hardware random number generation, with both Python and C components. It includes:
 
 - **Python library (`pyCTools`)**: Easy-to-use wrappers for native DLLs to access process metrics and hardware RNG.
