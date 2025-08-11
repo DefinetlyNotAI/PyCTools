@@ -1,4 +1,4 @@
-<div style="text-align: center;">
+<div align="center">
   <h1>PyCTools</h1>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows-lightgray" alt="Platform" />
@@ -139,3 +139,4 @@ where `{arch}` is `x64` or `x86` depending on your Python interpreter.
 > • **DLL explanations**: learn how the DLLs are structured, discovered, and loaded 
 > • **Python examples, wrappers, and usage**: practical code snippets and usage patterns in Python 
 > • **C code explanation**: understand the underlying native implementation
+
