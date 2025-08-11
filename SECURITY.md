@@ -2,6 +2,7 @@
 
 | Version | Supported | Release Date |
 |---------|-----------|--------------|
+| 0.2.x   | ✅         | 7th Aug 2025 |
 | 0.1.x   | ❌         | 7th Aug 2025 |
 
 ## Reporting a Vulnerability
