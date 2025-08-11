@@ -14,13 +14,9 @@ import base64
 import hashlib
 import os
 import secrets
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-# Add the parent directory to sys.path to import pyCTools
-# This is necessary for local testing, but once pyCTools becomes a package, this can be removed.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from pyCTools import MaxRNG
 
 
@@ -194,9 +190,9 @@ def threaded_rng_demo() -> None:
     def worker_function(thread_id, size):
         """Worker function that generates random bytes in a thread."""
         try:
-            start_time = time.time()
+            start_time_ = time.time()
             data = rng.maxrng_threadsafe(size)
-            elapsed = time.time() - start_time
+            elapsed = time.time() - start_time_
             return {
                 "thread_id": thread_id,
                 "data": data,
@@ -204,10 +200,10 @@ def threaded_rng_demo() -> None:
                 "time": elapsed,
                 "success": True
             }
-        except Exception as e:
+        except Exception as e_:
             return {
                 "thread_id": thread_id,
-                "error": str(e),
+                "error": str(e_),
                 "success": False
             }
 
@@ -411,15 +407,13 @@ def main() -> None:
     try:
         if os.path.exists("random_data.bin"):
             os.remove("random_data.bin")
-    except:
+    except Exception:
         pass
 
 
 if __name__ == "__main__":
     try:
-        import ctypes  # Import here for the error handling demo
-
         main()
-    except Exception as e:
-        print(f"\n❌ Unhandled exception: {e}")
+    except Exception as err:
+        print(f"\n❌ Unhandled exception: {err}")
         print("Demonstration terminated.")

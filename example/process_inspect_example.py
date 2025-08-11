@@ -8,16 +8,12 @@ This example shows:
 4. Interpreting and displaying the collected metrics
 5. Proper error handling and best practices
 """
-import os
-import sys
-import time
 import json
+import os
 import random
+import time
 from typing import Dict, Any
 
-# Add the parent directory to sys.path to import pyCTools
-# This is necessary for local testing, but once pyCTools becomes a package, this can be removed.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from pyCTools import ProcessMetrics
 
 
@@ -41,6 +37,7 @@ def simulate_workload(intensity: int = 1) -> None:
 
     # Memory-intensive work
     print(f"Simulating memory-intensive work (level {intensity})...")
+    # noinspection PyUnusedLocal
     big_list = [random.random() for _ in range(intensity * 10**5)]
 
     # I/O-intensive work (file operations)
@@ -308,7 +305,6 @@ def demo_other_process_monitoring() -> None:
         import psutil
         processes_available = True
     except ImportError:
-        processes_available = False
         print("psutil not available. Install with 'pip install psutil' to see this demo")
         return
 
