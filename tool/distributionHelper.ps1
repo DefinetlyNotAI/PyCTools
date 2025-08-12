@@ -88,17 +88,19 @@ try {
 
     Write-Host "bin folder validated successfully."
 
-    # Create dist folder if not exists
-    $distPath = Join-Path (Split-Path (Split-Path $binPath -Parent) -Parent) "dist"
-    if (-not (Test-Path $distPath)) {
-        New-Item -Path $distPath -ItemType Directory -ErrorAction Stop | Out-Null
-        Write-Host "Created dist folder at $distPath"
+    # Create dist/rawBinaryZipped folder if not exists
+    $distRoot = Join-Path (Split-Path (Split-Path $binPath -Parent) -Parent) "dist"
+    $rawBinaryZippedPath = Join-Path $distRoot "rawBinaryZipped"
+
+    if (-not (Test-Path $rawBinaryZippedPath)) {
+        New-Item -Path $rawBinaryZippedPath -ItemType Directory -ErrorAction Stop | Out-Null
+        Write-Host "Created rawBinaryZipped folder at $rawBinaryZippedPath"
     } else {
-        Write-Host "dist folder already exists at $distPath"
+        Write-Host "rawBinaryZipped folder already exists at $rawBinaryZippedPath"
     }
 
     # Compress bin folder to ZIP
-    $zipFile = Join-Path $distPath "bin.zip"
+    $zipFile = Join-Path $rawBinaryZippedPath "bin.zip"
 
     if (Test-Path $zipFile) { Remove-Item $zipFile -Force }
     try {
