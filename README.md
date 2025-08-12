@@ -12,11 +12,14 @@
 > * **Manual installation:**
 >
 >   1. Clone the repository and build the DLLs yourself.
->   2. Run the following to create the wheel file:
+>   2. Update the `VERSION` variable in `pyCTools/__init__.py` to match your desired version for the build.
+>   3. Run the following to create the wheel file:
 >      ```bash
->      cd tools python setup.py bdist_wheel
+>      pip install build
+>      cd tool
+>      python setupHelper.py  # Do not run `setup.py` directly, use this script instead as it handles many important things
 >      ```
->   3. The setup script will show you how to install the package locally with pip and how to create a virtual environment for testing.
+>   4. The setup script will show you how to install the package locally with pip and how to create a virtual environment for testing.
 > * **Automatic installation:**
 >   Go to the [releases page](https://github.com/DefinetlyNotAI/PyCTools/releases) and select the version you wish to install, and click on it, then copy the top `pip` command that will allow you to install it
 >   [Auto installation support from v0.2.0-beta and above]
@@ -69,7 +72,8 @@ This project provides a cross-language toolkit for Windows process inspection an
     │   ├── __init__.py                    # Package initializer
     │   ├── hwrng.py                       # Hardware RNG DLL wrapper
     │   ├── processInspect.py              # Process inspection DLL wrapper
-    │   └── _loadDLL.py                    # DLL loading logic used by wrappers
+    │   ├── _loadDLL.py                    # DLL loading logic used by wrappers
+    │   └── setup.py                       # Setup script for building and installing the package
     │
     ├── tool/                              # Build and distribution tools
     │   ├── compilerHelper.ps1             # Compiles C code into DLLs
