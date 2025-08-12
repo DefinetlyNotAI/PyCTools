@@ -1,11 +1,13 @@
 # Use python setup.py bdist_wheel
 import os
-import sys
-import re
 import pathlib
+import re
 import shutil
+import sys
 
 try:
+    # noinspection PyUnusedImports
+    from setuptools.command.bdist_wheel import bdist_wheel as _bdist_wheel
     # noinspection PyUnusedImports
     from setuptools import setup, find_packages
     import wheel
@@ -16,16 +18,12 @@ except ImportError:
     )
 
 
-def cleanup():
-    try:
-        # Cleanup: remove pyCTools.egg-info and build directories if they exist
-        for cleanup_dir in ["pyCTools.egg-info", "build", "../pyCTools.egg-info", "../build", "dist"]:
-            cleanup_path = pathlib.Path(__file__).parent / cleanup_dir
-            if cleanup_path.exists() and cleanup_path.is_dir():
-                shutil.rmtree(cleanup_path)
-        print("\n\033[90m[*] Completed setup.py script cleanup successfully.\033[0m\n")
-    except Exception as e:
-        sys.exit(f"[x] Cleanup failed: {e}")
+class bdist_wheel_clean(_bdist_wheel):
+    def run(self):
+        super().run()
+        for path in ("build", "pyCTools.egg-info"):
+            if os.path.exists(path):
+                shutil.rmtree(path)
 
 
 def prompt_version() -> str:
@@ -50,7 +48,6 @@ def get_latest_wheel(dist_dir: str, package_name: str) -> pathlib.Path:
         reverse=True
     )
     if not wheel_files:
-        cleanup()
         sys.exit(f"[x] No wheel files matching '{pattern}' found in {dist_dir}??\n")
 
     if len(wheel_files) == 1:
@@ -69,7 +66,6 @@ def get_latest_wheel(dist_dir: str, package_name: str) -> pathlib.Path:
             else:
                 print("[!] Invalid selection. Please enter a valid number.\n")
         except (KeyboardInterrupt, EOFError):
-            cleanup()
             sys.exit("\n[!] Selection interrupted. Exiting setup.\n")
 
 
@@ -164,13 +160,13 @@ if __name__ == "__main__":
                 "bdist_wheel": {"dist_dir": str(o_dir)},
                 "sdist": {"dist_dir": str(o_dir)},
             },
+            cmdclass={"bdist_wheel": bdist_wheel_clean}
         )
         print("\033[0m")
 
         whl_filename = get_latest_wheel("dist/libraryWheel", "pyctools")
         whl_filename = str(whl_filename).replace("\\", "/")
     except Exception as e:
-        cleanup()
         sys.exit(f"\033[0m[x] An error occurred during setup: {e}\n")
 
     success_finale(whl_filename_=whl_filename, version_=version)
