@@ -41,7 +41,7 @@ This project provides a cross-language toolkit for Windows process inspection an
 > | Auto Build Script        | Run the [`tool/compilerHelper.ps1`](tool/compilerHelper.ps1) PowerShell script                               | Visual Studio Build Tools + PowerShell              |
 > | Prebuilt Release Archive | Download precompiled binaries from the [releases page](https://github.com/DefinetlyNotAI/PyCTools/releases/) | None, make sure to use the latest available version |
 >
-> No matter what you decide, do still read the important notice about the `dist` from the [release](https://github.com/DefinetlyNotAI/PyCTools/releases/) OR check the [Wiki](https://github.com/DefinetlyNotAI/PyCTools/wiki#dll-discovery-and-dist-directory) page about the DLL discovery explanation.
+> No matter what you decide, do still read the important notice about the `dist` from the [release](https://github.com/DefinetlyNotAI/PyCTools/releases/) OR check the [Wiki](https://github.com/DefinetlyNotAI/PyCTools/wiki#dll-discovery-and-bin-directory) page about the DLL discovery explanation.
 
 ## Directory Structure
 
