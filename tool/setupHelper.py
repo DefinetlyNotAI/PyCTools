@@ -42,6 +42,7 @@ def success_finale(whl_filename_: str, version_: str):
     )
 
     print("[*] For local installation, run:")
+    print(f"        \033[96mcd ..\033[0m")
     print(f"        \033[96mpython -m pip install dist/wheels/{whl_filename_}\033[0m")
     print("[*] If you place the WHL file on the GitHub releases page, users can download it and install it with:")
     print(
