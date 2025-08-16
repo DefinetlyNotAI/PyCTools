@@ -25,12 +25,34 @@ if (-not $cFiles) {
     exit 1
 }
 
-# Prompt user for each detected .c file whether to compile it
+# Handle -y and file arguments for auto-accept and selection
+$acceptAll = $false
+$specifiedFiles = @()
+foreach ($arg in $args) {
+    if ($arg -eq "-y") {
+        $acceptAll = $true
+    } elseif ($arg -like "*.c") {
+        $specifiedFiles += $arg
+    }
+}
+
 $filesToCompile = @()
-foreach ($file in $cFiles) {
-    $answer = Read-Host "Compile '$file'? (Y/N, default N)"
-    if ($answer -match '^(y|Y)$') {
-        $filesToCompile += $file
+if ($specifiedFiles.Count -gt 0) {
+    foreach ($file in $specifiedFiles) {
+        if ($cFiles -contains $file) {
+            $filesToCompile += $file
+        } else {
+            Write-CustomError "Specified file not found: $file"
+        }
+    }
+} elseif ($acceptAll) {
+    $filesToCompile = $cFiles
+} else {
+    foreach ($file in $cFiles) {
+        $answer = Read-Host "Compile '$file'? (Y/N, default N)"
+        if ($answer -match '^(y|Y)$') {
+            $filesToCompile += $file
+        }
     }
 }
 
