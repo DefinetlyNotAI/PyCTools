@@ -114,6 +114,7 @@ class MaxRNG:
         random_hex = rng.generate_custom(32, config)
     """
 
+    # Internal handlers
     def __init__(self):
         """Initialize the MaxRNG wrapper by loading the appropriate DLL."""
         # Load the DLL using the load_dll helper with WinDLL loader
@@ -166,6 +167,7 @@ class MaxRNG:
         ]
         self.dll.maxrng_dev.restype = ctypes.c_int
 
+    # Availability checks
     def is_available(self) -> bool:
         """
         Check if the RNG hardware is available.
@@ -184,6 +186,7 @@ class MaxRNG:
         """
         return self.dll.test_threading_available() == 1
 
+    # Initialization methods
     def init_threading(self) -> None:
         """
         Initialize the RNG for thread-safe operations.
@@ -192,80 +195,6 @@ class MaxRNG:
         It initializes internal synchronization primitives.
         """
         self.dll.maxrng_init()
-
-    def generate(self, size: int) -> bytes:
-        """
-        Generate random bytes using the standard RNG.
-
-        Args:
-            size (int): Number of random bytes to generate.
-
-        Returns:
-            bytes: Random bytes generated.
-
-        Raises:
-            RuntimeError: If the RNG function call fails.
-        """
-        buf = (ctypes.c_ubyte * size)()
-        success = self.dll.maxrng(buf, size)
-        if not success:
-            raise RuntimeError("Failed to generate random data")
-        return bytes(buf)
-
-    def generate_ultra(self, size: int, complexity: int = 5) -> bytes:
-        """
-        Generate high-quality random bytes with specified complexity.
-
-        Args:
-            size (int): Number of random bytes to generate.
-            complexity (int): Complexity level (1-10), higher is more secure.
-
-        Returns:
-            bytes: Random bytes generated.
-
-        Raises:
-            ValueError: If complexity is out of range.
-            RuntimeError: If the RNG function call fails.
-        """
-        if not 1 <= complexity <= 10:
-            raise ValueError("Complexity must be between 1 and 10")
-
-        buf = (ctypes.c_ubyte * size)()
-        success = self.dll.maxrng_ultra(buf, size, complexity)
-        if not success:
-            raise RuntimeError("Failed to generate ultra random data")
-        return bytes(buf)
-
-    def generate_threadsafe(self, size: int, complexity: int = 2) -> bytes:
-        """
-        Generate random bytes using thread-safe RNG function.
-
-        Args:
-            size (int): Number of random bytes to generate.
-            complexity (int): Complexity level (1-5), higher is more secure.
-
-        Returns:
-            bytes: Random bytes generated.
-
-        Raises:
-            ValueError: If complexity is out of range.
-            RuntimeError: If threading is not available or the RNG call fails.
-        """
-        if not 1 <= complexity <= 5:
-            raise ValueError("Complexity for thread-safe RNG must be between 1 and 5")
-
-        if not self.is_threading_available():
-            self.init_threading()
-            if not self.is_threading_available():
-                raise RuntimeError(
-                    "Threading initialization failed. Ensure the hRng DLL supports thread-safe operations."
-                )
-
-        buf = (ctypes.c_ubyte * size)()
-        success = self.dll.maxrng_threadsafe(buf, size, complexity)
-        if not success:
-            raise RuntimeError("Failed to generate thread-safe random data")
-        return bytes(buf)
 
     def create_config(self,
                       security_mode: SecurityMode = SecurityMode.BALANCED,
@@ -348,6 +277,81 @@ class MaxRNG:
 
         return config
 
+    # All RNG generation methods
+    def generate(self, size: int) -> bytes:
+        """
+        Generate random bytes using the standard RNG.
+
+        Args:
+            size (int): Number of random bytes to generate.
+
+        Returns:
+            bytes: Random bytes generated.
+
+        Raises:
+            RuntimeError: If the RNG function call fails.
+        """
+        buf = (ctypes.c_ubyte * size)()
+        success = self.dll.maxrng(buf, size)
+        if not success:
+            raise RuntimeError("Failed to generate random data")
+        return bytes(buf)
+
+    def generate_ultra(self, size: int, complexity: int = 5) -> bytes:
+        """
+        Generate high-quality random bytes with specified complexity.
+
+        Args:
+            size (int): Number of random bytes to generate.
+            complexity (int): Complexity level (1-10), higher is more secure.
+
+        Returns:
+            bytes: Random bytes generated.
+
+        Raises:
+            ValueError: If complexity is out of range.
+            RuntimeError: If the RNG function call fails.
+        """
+        if not 1 <= complexity <= 10:
+            raise ValueError("Complexity must be between 1 and 10")
+
+        buf = (ctypes.c_ubyte * size)()
+        success = self.dll.maxrng_ultra(buf, size, complexity)
+        if not success:
+            raise RuntimeError("Failed to generate ultra random data")
+        return bytes(buf)
+
+    def generate_threadsafe(self, size: int, complexity: int = 2) -> bytes:
+        """
+        Generate random bytes using thread-safe RNG function.
+
+        Args:
+            size (int): Number of random bytes to generate.
+            complexity (int): Complexity level (1-5), higher is more secure.
+
+        Returns:
+            bytes: Random bytes generated.
+
+        Raises:
+            ValueError: If complexity is out of range.
+            RuntimeError: If threading is not available or the RNG call fails.
+        """
+        if not 1 <= complexity <= 5:
+            raise ValueError("Complexity for thread-safe RNG must be between 1 and 5")
+
+        if not self.is_threading_available():
+            self.init_threading()
+            if not self.is_threading_available():
+                raise RuntimeError(
+                    "Threading initialization failed. Ensure the hRng DLL supports thread-safe operations."
+                )
+
+        buf = (ctypes.c_ubyte * size)()
+        success = self.dll.maxrng_threadsafe(buf, size, complexity)
+        if not success:
+            raise RuntimeError("Failed to generate thread-safe random data")
+        return bytes(buf)
+
     def generate_custom(self,
                         size: int,
                         config: Optional[Union[RNGConfig, SecurityMode]] = None,
@@ -408,7 +412,7 @@ class MaxRNG:
             # For HEX and BASE64, return as string
             return result.decode('ascii')
 
-    # Convenience methods for common use cases
+    # Convenience methods for common random use cases
     def generate_hex(self, size: int, security: SecurityMode = SecurityMode.BALANCED) -> str:
         """Generate random data as a hex string."""
         return self.generate_custom(size, security, OutputMode.HEX)
@@ -482,6 +486,7 @@ class MaxRNG:
         # Map to the desired range
         return start + (value % range_size)
 
+    # Convenience methods for common operations
     def choose(self, items: List) -> object:
         """
         Choose a random item from a list.
