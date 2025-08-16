@@ -90,8 +90,8 @@ Example usages and documentation for both modules in detail can be found in the 
 
 #### Script usage examples
 
-- [Hardware RNG Example Script Wiki page](https://github.com/DefinetlyNotAI/PyCTools/wiki/Py-Documentation-‐-hwrng#proper-examples-and-tests)
-- [Process Inspection Example Script Wiki page](https://github.com/DefinetlyNotAI/PyCTools/wiki/Py-Documentation-‐-processInspect#example-script)
+- [Hardware RNG Example Script](example/hwrng.py)
+- [Process Inspection Example Script](example/processInspect.py)
 
 #### Module usage documentation
 - [Hardware RNG Documentation Wiki page](https://github.com/DefinetlyNotAI/PyCTools/wiki/Py-Documentation-‐-hwrng#methods)
