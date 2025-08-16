@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Process Inspection Module provides powerful, low-level access to Windows process metrics and performance data. This library allows applications to monitor process resource usage with minimal overhead, supporting both instantaneous measurements and differential metrics over specified time periods.
+The Process Inspection Module provides powerful, low-level access to Windows process metrics and performance data. This library allows applications to monitor process resource usage with minimal overhead, supporting both instantaneous measurements, differential metrics over specified time periods, and continuous monitoring with callbacks.
 
 ## Key Features
 
@@ -11,7 +11,8 @@ The Process Inspection Module provides powerful, low-level access to Windows pro
 - Process resource tracking (handles, threads)
 - CPU utilization measurement
 - I/O operations monitoring (read/write)
-- Support for both snapshot and time-interval measurements
+- Support for snapshot, time-interval, and continuous measurements
+- Callback-based monitoring for real-time metrics
 - JSON-formatted output for easy integration
 - Customizable metrics selection
 
@@ -94,6 +95,53 @@ Ends metrics collection and calculates differentials for the time period since `
 **Notes:**
 - CPU and I/O metrics are reported as deltas between start and end collection
 - Memory metrics are instantaneous values at the time of call
+
+#### `int start_metrics_monitoring(DWORD pid, DWORD metrics, DWORD intervalMs, int totalDurationMs, void (*callbackFn)(const char*, void*), void* userData)`
+
+Starts continuous monitoring of a process, collecting metrics at regular intervals and invoking a callback function with the results.
+
+**Parameters:**
+- `pid`: Process ID to monitor
+- `metrics`: Bitwise combination of METRIC_* flags indicating which metrics to collect
+- `intervalMs`: Interval between measurements in milliseconds
+- `totalDurationMs`: Total duration to monitor in milliseconds, or -1 for indefinite monitoring until explicitly stopped
+- `callbackFn`: Function pointer to a callback that will receive metrics data as a JSON string
+- `userData`: Optional user data pointer that will be passed to the callback function
+
+**Returns:**
+- `1` if monitoring successfully started
+- `0` on failure (invalid process, insufficient permissions, already monitoring)
+
+**Notes:**
+- Only one monitoring session can be active at a time
+- The callback function runs in the context of the monitoring thread
+- The JSON string passed to the callback is valid only for the duration of the callback
+
+#### `int stop_metrics_monitoring()`
+
+Stops an active continuous monitoring session.
+
+**Parameters:**
+- None
+
+**Returns:**
+- `1` if monitoring was successfully stopped
+- `0` if no monitoring was active
+
+**Notes:**
+- This function will wait up to 5 seconds for the monitoring thread to exit
+- All resources associated with monitoring are cleaned up when this function returns successfully
+
+#### `int is_metrics_monitoring_active()`
+
+Checks if a continuous monitoring session is currently active.
+
+**Parameters:**
+- None
+
+**Returns:**
+- `1` if a monitoring session is currently active
+- `0` if no monitoring is active
 
 ## Usage Examples
 
@@ -186,6 +234,78 @@ int main() {
     } else {
         printf("Failed to start metrics collection\n");
     }
+    
+    FreeLibrary(hModule);
+    return 0;
+}
+```
+
+### Continuous Monitoring with Callback
+
+```c
+#include <windows.h>
+#include <stdio.h>
+
+// Import the DLL functions
+typedef int (*StartMonitoring_Func)(DWORD, DWORD, DWORD, int, void (*)(const char*, void*), void*);
+typedef int (*StopMonitoring_Func)();
+typedef int (*IsMonitoringActive_Func)();
+
+// Callback function to process metrics
+void MetricsCallback(const char* json, void* userData) {
+    // The userData parameter could be used to pass context data
+    printf("Metrics update: %s\n", json);
+    
+    // Process the JSON data as needed
+    // Note: In a real application, you might want to parse the JSON
+    // and take action based on thresholds
+}
+
+int main() {
+    HMODULE hModule = LoadLibrary("processInspect.dll");
+    if (!hModule) {
+        printf("Failed to load processInspect.dll\n");
+        return 1;
+    }
+    
+    StartMonitoring_Func StartMonitoring = 
+        (StartMonitoring_Func)GetProcAddress(hModule, "start_metrics_monitoring");
+    
+    StopMonitoring_Func StopMonitoring = 
+        (StopMonitoring_Func)GetProcAddress(hModule, "stop_metrics_monitoring");
+    
+    IsMonitoringActive_Func IsMonitoringActive = 
+        (IsMonitoringActive_Func)GetProcAddress(hModule, "is_metrics_monitoring_active");
+    
+    if (!StartMonitoring || !StopMonitoring || !IsMonitoringActive) {
+        printf("Failed to get function addresses\n");
+        FreeLibrary(hModule);
+        return 1;
+    }
+    
+    const DWORD pid = 1234; // Replace with actual PID
+    const DWORD metrics = METRIC_CPU_USAGE | METRIC_WORKING_SET | METRIC_HANDLES;
+    const DWORD intervalMs = 2000; // 2 seconds between measurements
+    
+    // Start monitoring with callback
+    if (StartMonitoring(pid, metrics, intervalMs, 30000, MetricsCallback, NULL)) {
+        printf("Started continuous monitoring for 30 seconds...\n");
+        
+        // Your application can continue doing other work here
+        // while monitoring happens in the background
+        
+        // For this example, we'll just wait until monitoring is done
+        while (IsMonitoringActive()) {
+            Sleep(1000);
+        }
+        
+        printf("Monitoring completed.\n");
+    } else {
+        printf("Failed to start monitoring\n");
+    }
+    
+    // You can also stop monitoring explicitly if needed:
+    // StopMonitoring();
     
     FreeLibrary(hModule);
     return 0;
@@ -311,15 +431,26 @@ int main(int argc, char* argv[]) {
 
 - The library uses Windows Performance Data Helper (PDH) and Process Status API (PSAPI) to collect metrics
 - Thread synchronization is implemented for metric collection over time
+- Continuous monitoring uses a dedicated background thread for collecting metrics
 - The implementation uses Windows-specific APIs and is optimized for minimal overhead
 - CPU usage calculation takes into account all cores/processors in the system
 - All memory metrics are reported in kilobytes (KB)
+- Callback functions in continuous monitoring are invoked from the monitoring thread
+
+### Continuous Monitoring Best Practices
+
+- **Keep callbacks lightweight**: The callback function is executed on the monitoring thread. Long-running operations in the callback will delay subsequent metric collections.
+- **Thread safety**: Since the callback runs on a different thread, ensure any data structures accessed by the callback are thread-safe.
+- **Error handling**: Always check the return values from monitoring functions and implement appropriate error handling.
+- **Resource cleanup**: Always call `stop_metrics_monitoring()` when monitoring is no longer needed to free resources.
+- **Monitoring interval**: Choose an appropriate interval based on your application's needs. Very frequent updates (< 100ms) may impact performance.
 
 ### Known Limitations
 
 - Requires administrator privileges to monitor some processes
 - CPU usage metrics may not be 100% accurate for very short-lived processes
 - Network metrics are reserved for future implementation (METRIC_NET flag)
+- Only one continuous monitoring session can be active at a time
 - Only supports Windows operating systems
 
 ## Building and Integration

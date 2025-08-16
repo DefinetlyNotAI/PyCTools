@@ -127,6 +127,82 @@ snapshot = pm.get_snapshot(
 )
 ```
 
+### `start_monitoring(pid: int, metrics: int, interval_ms: int, duration_ms: int = -1, callback=None) -> bool`
+
+Starts a continuous monitoring session that collects metrics at regular intervals.
+
+**Parameters:**
+- `pid` (int): Process ID to monitor
+- `metrics` (int): Bitmask of metrics to collect, using class constants
+- `interval_ms` (int): Interval between metric collections in milliseconds
+- `duration_ms` (int, optional): Total duration to monitor in milliseconds. Use -1 for indefinite monitoring until explicitly stopped (default: -1)
+- `callback` (callable, optional): Function to call with each metrics update. The callback receives a dict of the parsed metrics.
+
+**Returns:**
+- `bool`: `True` if monitoring started successfully, `False` otherwise
+
+**Implementation Details:**
+- Creates a C-compatible callback function that converts JSON data to Python dicts
+- Calls the native DLL's `start_metrics_monitoring` function
+- Fails if another monitoring session is already active
+
+**Example:**
+```python
+def on_metrics_update(metrics_dict):
+    print(f"Process {metrics_dict['name']} CPU: {metrics_dict['cpu_usage']['percent']}%")
+
+pm = ProcessMetrics()
+pm.start_monitoring(
+    1234,                                  # PID to monitor
+    ProcessMetrics.METRIC_CPU_USAGE | 
+    ProcessMetrics.METRIC_WORKING_SET,    # Metrics to collect
+    2000,                                 # Check every 2 seconds
+    60000,                                # Monitor for 1 minute
+    on_metrics_update                     # Callback function
+)
+```
+
+### `stop_monitoring() -> bool`
+
+Stops an active continuous monitoring session.
+
+**Returns:**
+- `bool`: `True` if monitoring was successfully stopped, `False` if no monitoring was active
+
+**Implementation Details:**
+- Calls the native DLL's `stop_metrics_monitoring` function
+- Cleans up callback references when successful
+
+**Example:**
+```python
+pm = ProcessMetrics()
+# Start monitoring first
+pm.start_monitoring(1234, ProcessMetrics.METRIC_CPU_USAGE, 1000)
+# Later, stop monitoring
+if pm.stop_monitoring():
+    print("Monitoring stopped successfully")
+else:
+    print("No active monitoring to stop")
+```
+
+### `is_monitoring_active() -> bool`
+
+Checks if a continuous monitoring session is currently active.
+
+**Returns:**
+- `bool`: `True` if monitoring is active, `False` otherwise
+
+**Implementation Details:**
+- Calls the native DLL's `is_metrics_monitoring_active` function
+
+**Example:**
+```python
+pm = ProcessMetrics()
+if pm.is_monitoring_active():
+    print("Monitoring is currently running")
+else:
+    print("No active monitoring session")
+```
 
 <details>
 <summary>Internal Method</summary>
@@ -228,6 +304,16 @@ The class implements robust error handling:
   results = metrics.end_session(pid, metrics_flags)
   ```
 
+- **For continuous monitoring with callbacks:**
+  ```python
+  def metrics_callback(data):
+      print(f"CPU: {data['cpu_usage']['percent']}%")
+  
+  metrics.start_monitoring(pid, metrics_flags, 1000, callback=metrics_callback)
+  # ... application continues ...
+  metrics.stop_monitoring()  # When done
+  ```
+
 ### Efficient Metric Collection
 
 Combine only the metrics you need to minimize overhead:
@@ -253,4 +339,26 @@ try:
     results = metrics.get_snapshot(pid, metrics_flags)
 except (RuntimeError, FileNotFoundError) as e:
     print(f"Error collecting metrics: {e}")
+```
+
+### Monitoring Best Practices
+
+- **Interval Selection**: Choose an appropriate interval that balances data granularity with performance overhead. Very short intervals (< 100ms) may impact system performance.
+- **Callback Efficiency**: Keep callback functions lightweight and fast. Heavy processing in callbacks may cause monitoring to fall behind.
+- **Resource Cleanup**: Always call `stop_monitoring()` when done to release DLL resources.
+- **Check Active Status**: Use `is_monitoring_active()` to verify the monitoring state when needed.
+
+```python
+# Complete monitoring example with proper resource management
+try:
+    pm = ProcessMetrics()
+    pm.start_monitoring(pid, metrics_flags, 2000)  # 2-second interval
+    
+    # Do other work while monitoring happens in background
+    
+    # When finished:
+    if pm.is_monitoring_active():
+        pm.stop_monitoring()
+except Exception as e:
+    print(f"Monitoring error: {e}")
 ```
