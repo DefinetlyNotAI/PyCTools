@@ -13,12 +13,10 @@ function Write-CustomError {
     }
 }
 
-# Get .c files in current directory, ../src, or ./src
+# Get .c files only in ..\src
 $cFiles = @()
-foreach ($dir in @(".", "..\src", ".\src")) {
-    if (Test-Path $dir) {
-        $cFiles += Get-ChildItem -Path $dir -Filter *.c -File | ForEach-Object { $_.FullName }
-    }
+if (Test-Path "..\src") {
+    $cFiles += Get-ChildItem -Path "..\src" -Filter *.c -File | ForEach-Object { $_.FullName }
 }
 if (-not $cFiles) {
     Write-CustomError "No .c files found in current directory. Exiting."
@@ -39,10 +37,10 @@ foreach ($arg in $args) {
 $filesToCompile = @()
 if ($specifiedFiles.Count -gt 0) {
     foreach ($file in $specifiedFiles) {
-        if ($cFiles -contains $file) {
-            $filesToCompile += $file
+        if ($cFiles | Where-Object { [System.IO.Path]::GetFileName($_) -eq $file }) {
+            $filesToCompile += ( $cFiles | Where-Object { [System.IO.Path]::GetFileName($_) -eq $file } )
         } else {
-            Write-CustomError "Specified file not found: $file"
+            Write-CustomError "Specified file not found in ..\src: $file"
         }
     }
 } elseif ($acceptAll) {
