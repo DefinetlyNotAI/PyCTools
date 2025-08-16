@@ -5,8 +5,9 @@ This example shows:
 1. Setting up the ProcessMetrics module
 2. Using both session-based and snapshot monitoring approaches
 3. Working with all available metric types
-4. Interpreting and displaying the collected metrics
+4. Interpreting and displaying the metrics
 5. Proper error handling and best practices
+6. Continuous monitoring with callbacks
 """
 import json
 import os
@@ -316,7 +317,7 @@ def demo_other_process_monitoring() -> None:
             print(f"  PID {proc.info['pid']}: {proc.info['name']}")
 
         # Try to monitor a system process like explorer.exe on Windows
-        target_name = "explorer.exe" if os.name == "nt" else "sshd"
+        target_name = "explorer.exe"
         target_pid = None
 
         for proc in psutil.process_iter(['pid', 'name']):
@@ -340,6 +341,119 @@ def demo_other_process_monitoring() -> None:
             print(f"\nCould not find {target_name} process")
 
 
+def demo_continuous_monitoring() -> None:
+    """
+    Demonstrates how to use continuous monitoring with callbacks.
+
+    This approach is ideal for:
+    - Real-time monitoring dashboards
+    - System administration panels
+    - Long-term resource tracking
+    - Detecting resource spikes or anomalies
+    """
+    print("\n\n" + "=" * 80)
+    print("DEMONSTRATION: CONTINUOUS MONITORING WITH CALLBACKS")
+    print("=" * 80)
+
+    metrics = ProcessMetrics()
+    pid = os.getpid()  # Monitor the current Python process
+
+    # Define the metrics we want to collect
+    flags = (
+        ProcessMetrics.METRIC_WORKING_SET |
+        ProcessMetrics.METRIC_PRIVATE_BYTES |
+        ProcessMetrics.METRIC_CPU_USAGE |
+        ProcessMetrics.METRIC_HANDLES |
+        ProcessMetrics.METRIC_THREADS
+    )
+
+    # Counter for received updates
+    updates_received = 0
+
+    # Callback function that will be called for each metrics update
+    def metrics_callback(data):
+        nonlocal updates_received
+        updates_received += 1
+        print(f"\nUpdate #{updates_received} received:")
+        print(f"  PID: {data['pid']}")
+
+        if 'working_set_kb' in data:
+            print(f"  Working Set: {data['working_set_kb']} KB")
+        if 'private_kb' in data:
+            print(f"  Private Memory: {data['private_kb']} KB")
+        if 'cpu' in data:
+            print(f"  CPU Usage: {data['cpu']}%")
+        if 'handles' in data:
+            print(f"  Handles: {data['handles']}")
+        if 'threads' in data:
+            print(f"  Threads: {data['threads']}")
+
+        # If we receive 5 updates, simulate some workload
+        if updates_received == 5:
+            print("\n  [Simulating intensive workload during monitoring...]")
+            simulate_workload(intensity=3)
+
+    # Start monitoring with a 1-second interval, run for 10 seconds
+    interval_ms = 1000  # 1 second between updates
+    duration_ms = 10000  # Run for 10 seconds total
+
+    print(f"Starting continuous monitoring for PID {pid}")
+    print(f"Interval: {interval_ms}ms, Duration: {duration_ms}ms")
+    print("Updates will be printed as they are received...")
+
+    # Start the monitoring
+    success = metrics.start_monitoring(
+        pid=pid,
+        metrics=flags,
+        interval_ms=interval_ms,
+        duration_ms=duration_ms,
+        callback=metrics_callback
+    )
+
+    if not success:
+        print("ERROR: Failed to start continuous monitoring!")
+        return
+
+    # Wait until monitoring is complete
+    print("Monitoring active. Waiting for completion...")
+
+    # Keep checking if monitoring is still active
+    while metrics.is_monitoring_active():
+        time.sleep(0.5)
+
+    print("\nMonitoring completed automatically after duration expired.")
+    print(f"Received {updates_received} updates in total.")
+
+    # Demonstrate manual stopping
+    print("\nNow demonstrating indefinite monitoring with manual stop...")
+    updates_received = 0
+
+    # Start indefinite monitoring (duration = -1)
+    success = metrics.start_monitoring(
+        pid=pid,
+        metrics=flags,
+        interval_ms=interval_ms,
+        duration_ms=-1,  # Run indefinitely
+        callback=metrics_callback
+    )
+
+    if not success:
+        print("ERROR: Failed to start indefinite monitoring!")
+        return
+
+    print("Indefinite monitoring started. Will stop after 5 seconds...")
+
+    # Let it run for 5 seconds then stop manually
+    time.sleep(5)
+
+    # Stop monitoring
+    if metrics.stop_monitoring():
+        print("\nMonitoring stopped manually.")
+        print(f"Received {updates_received} updates before stopping.")
+    else:
+        print("\nFailed to stop monitoring or monitoring was already stopped.")
+
+
 def main():
     """Main function to demonstrate all ProcessMetrics capabilities."""
     print("=" * 80)
@@ -353,6 +467,7 @@ def main():
     demo_snapshot_monitoring()
     demo_selective_metrics()
     demo_other_process_monitoring()
+    demo_continuous_monitoring()  # Added the new continuous monitoring demo
 
     print("\n" + "=" * 80)
     print("DEMONSTRATION COMPLETE")

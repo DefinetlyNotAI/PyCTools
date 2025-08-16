@@ -26,7 +26,20 @@ typedef struct {
     int active;
 } MetricsSession;
 
+// Structure for the monitoring thread
+typedef struct {
+    DWORD pid;
+    DWORD metrics;
+    DWORD intervalMs;
+    int totalDurationMs;   // -1 means run until explicitly stopped
+    int isRunning;
+    HANDLE threadHandle;
+    void (*callbackFn)(const char*, void*);
+    void* userData;
+} MonitoringContext;
+
 static MetricsSession g_session = {0};
+static MonitoringContext g_monitorContext = {0};
 
 static ULONGLONG fileTimeToInt(const FILETIME ft) {
     ULARGE_INTEGER ui;
@@ -248,4 +261,100 @@ int get_metrics_json(const DWORD pid, const DWORD metrics, char *json_buf, const
 
     CloseHandle(hProcess);
     return 1;
+}
+
+// Thread function to collect metrics at regular intervals
+// ReSharper disable once CppParameterMayBeConst
+DWORD WINAPI MonitoringThreadProc(LPVOID lpParam) {
+    MonitoringContext* ctx = (MonitoringContext*)lpParam;
+    const DWORD startTime = GetTickCount();
+    char buffer[2048];  // Buffer for JSON metrics
+
+    while (ctx->isRunning) {
+        // Collect and send metrics
+        if (get_metrics_json(ctx->pid, ctx->metrics, buffer, sizeof(buffer))) {
+            if (ctx->callbackFn) {
+                ctx->callbackFn(buffer, ctx->userData);
+            }
+        }
+
+        // Check if we need to stop based on duration
+        if (ctx->totalDurationMs > 0) {
+            const DWORD currentTime = GetTickCount();
+            if (currentTime - startTime >= (DWORD)ctx->totalDurationMs) {
+                break;
+            }
+        }
+
+        // Sleep for the interval period
+        Sleep(ctx->intervalMs);
+    }
+
+    ctx->isRunning = 0;
+    return 0;
+}
+
+__declspec(dllexport)
+int start_metrics_monitoring(
+    const DWORD pid,
+    const DWORD metrics,
+    const DWORD intervalMs,
+    const int totalDurationMs,
+    void (*callbackFn)(const char*, void*),
+    void* userData) {
+
+    // Don't start if already running
+    if (g_monitorContext.isRunning) {
+        return 0;
+    }
+
+    // Setup monitoring context
+    g_monitorContext.pid = pid;
+    g_monitorContext.metrics = metrics;
+    g_monitorContext.intervalMs = intervalMs;
+    g_monitorContext.totalDurationMs = totalDurationMs;
+    g_monitorContext.isRunning = 1;
+    g_monitorContext.callbackFn = callbackFn;
+    g_monitorContext.userData = userData;
+
+    // Create the monitoring thread
+    g_monitorContext.threadHandle = CreateThread(
+        NULL,
+        0,
+        MonitoringThreadProc,
+        &g_monitorContext,
+        0,
+        NULL
+    );
+
+    if (g_monitorContext.threadHandle == NULL) {
+        g_monitorContext.isRunning = 0;
+        return 0;
+    }
+
+    return 1;
+}
+
+__declspec(dllexport)
+int stop_metrics_monitoring() {
+    if (!g_monitorContext.isRunning) {
+        return 0;
+    }
+
+    // Signal the thread to stop
+    g_monitorContext.isRunning = 0;
+
+    // Wait for the thread to exit
+    if (g_monitorContext.threadHandle != NULL) {
+        WaitForSingleObject(g_monitorContext.threadHandle, 5000);  // Wait up to 5 seconds
+        CloseHandle(g_monitorContext.threadHandle);
+        g_monitorContext.threadHandle = NULL;
+    }
+
+    return 1;
+}
+
+__declspec(dllexport)
+int is_metrics_monitoring_active() {
+    return g_monitorContext.isRunning;
 }

@@ -1,6 +1,6 @@
 import ctypes
 import json
-from ctypes import c_char_p, c_size_t, c_ulong, create_string_buffer
+from ctypes import c_char_p, c_size_t, c_ulong, create_string_buffer, CFUNCTYPE, c_void_p, c_int
 
 from pyCTools._loadDLL import load_dll
 
@@ -58,6 +58,24 @@ class ProcessMetrics:
 
         self._dll.get_metrics_json.argtypes = [c_ulong, c_ulong, c_char_p, c_size_t]
         self._dll.get_metrics_json.restype = ctypes.c_int
+
+        # Define C function type for the monitoring callback
+        self._CALLBACK_TYPE = CFUNCTYPE(None, c_char_p, c_void_p)
+
+        # Set types for monitoring functions
+        self._dll.start_metrics_monitoring.argtypes = [c_ulong, c_ulong, c_ulong, c_int,
+                                                       self._CALLBACK_TYPE, c_void_p]
+        self._dll.start_metrics_monitoring.restype = ctypes.c_int
+
+        self._dll.stop_metrics_monitoring.argtypes = []
+        self._dll.stop_metrics_monitoring.restype = ctypes.c_int
+
+        self._dll.is_metrics_monitoring_active.argtypes = []
+        self._dll.is_metrics_monitoring_active.restype = ctypes.c_int
+
+        # Store callback reference to prevent garbage collection
+        self._callback_ref = None
+        self._user_callback = None
 
     @staticmethod
     def _json_call(func, pid: int, metrics: int, _buffer_size: int = 4096) -> dict:
@@ -121,3 +139,70 @@ class ProcessMetrics:
             dict: Current metrics snapshot.
         """
         return self._json_call(self._dll.get_metrics_json, pid, metrics)
+
+    # noinspection PyUnusedLocal
+    def _callback_wrapper(self, json_str, user_data):
+        """
+        Internal callback wrapper that converts C JSON string to Python dict
+        and calls the user's callback function.
+
+        Args:
+            json_str (c_char_p): JSON metrics data from C.
+            user_data (c_void_p): User data pointer (unused in this implementation).
+        """
+        if self._user_callback:
+            metrics_dict = json.loads(ctypes.string_at(json_str).decode('utf-8'))
+            self._user_callback(metrics_dict)
+
+    def start_monitoring(self, pid: int, metrics: int, interval_ms: int,
+                         duration_ms: int = -1, callback=None) -> bool:
+        """
+        Start continuous monitoring of a process at specified intervals.
+
+        Args:
+            pid (int): Process ID to monitor.
+            metrics (int): Bitmask of metrics to collect (use class flags).
+            interval_ms (int): Interval between metric collections in milliseconds.
+            duration_ms (int): Total duration to monitor in milliseconds. Use -1 for
+                               indefinite monitoring until explicitly stopped.
+            callback (callable): Function to call with each metrics update.
+                                The callback receives a dict of the parsed metrics.
+
+        Returns:
+            bool: True if monitoring started successfully, False otherwise.
+        """
+        if self.is_monitoring_active():
+            return False
+
+        self._user_callback = callback
+
+        # Create C-compatible callback function
+        if callback:
+            self._callback_ref = self._CALLBACK_TYPE(self._callback_wrapper)
+        else:
+            self._callback_ref = None
+
+        return bool(self._dll.start_metrics_monitoring(
+            pid, metrics, interval_ms, duration_ms, self._callback_ref, None))
+
+    def stop_monitoring(self) -> bool:
+        """
+        Stop an active monitoring session.
+
+        Returns:
+            bool: True if monitoring was successfully stopped, False if no monitoring was active.
+        """
+        result = bool(self._dll.stop_metrics_monitoring())
+        if result:
+            self._user_callback = None
+            self._callback_ref = None
+        return result
+
+    def is_monitoring_active(self) -> bool:
+        """
+        Check if a monitoring session is currently active.
+
+        Returns:
+            bool: True if monitoring is active, False otherwise.
+        """
+        return bool(self._dll.is_metrics_monitoring_active())

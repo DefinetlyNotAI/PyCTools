@@ -1,9 +1,14 @@
 ## Supported Versions
 
-| Version | Supported | Release Date |
-|---------|-----------|--------------|
-| 0.2.x   | ✅         | 7th Aug 2025 |
-| 0.1.x   | ❌         | 7th Aug 2025 |
+| Version | Supported | Release Date  |
+|---------|-----------|---------------|
+| 0.3.x   | ✅         | 17th Aug 2025 |
+| 0.2.x   | ✅         | 13th Aug 2025 |
+| 0.1.x   | ❌         | 7th Aug 2025  |
+
+> v0.1.0 cannot be found in the release section, it was a dev version that was never released to the public.
+> 
+> v0.2.0-beta is the first public release, and it is a beta version. It also supports `pip`
 
 ## Reporting a Vulnerability
 
