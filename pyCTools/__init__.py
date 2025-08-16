@@ -6,4 +6,4 @@ import os
 if os.name != 'nt':
     raise OSError('This package only supports Windows OS.')
 
-VERSION = "0.2.1-beta"
+VERSION = "0.3.0-beta"

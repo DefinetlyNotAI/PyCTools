@@ -84,14 +84,44 @@ static void collect_disk_entropy(const BCRYPT_HASH_HANDLE hHash)
 // Audio entropy fallback (simple timing fallback)
 static void collect_audio_entropy(const BCRYPT_HASH_HANDLE hHash)
 {
-    // Simplified: no real audio capture to keep minimal
-    // Just hash QueryPerformanceCounter several times with Sleep
-    for (int i = 0; i < 5; i++)
-    {
-        LARGE_INTEGER counter;
-        QueryPerformanceCounter(&counter);
-        BCryptHashData(hHash, (PUCHAR)&counter, sizeof(counter), 0);
-        Sleep(10);
+    HWAVEIN hWaveIn = NULL;
+    WAVEFORMATEX wfx = {0};
+    wfx.wFormatTag = WAVE_FORMAT_PCM;
+    wfx.nChannels = 1;
+    wfx.nSamplesPerSec = 8000;
+    wfx.wBitsPerSample = 8;
+    wfx.nBlockAlign = 1;
+    wfx.nAvgBytesPerSec = 8000;
+    wfx.cbSize = 0;
+
+    const MMRESULT res = waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    if (res == MMSYSERR_NOERROR && hWaveIn) {
+        WAVEHDR hdr = {0};
+        BYTE buffer[256] = {0};
+        hdr.lpData = (LPSTR)buffer;
+        hdr.dwBufferLength = sizeof(buffer);
+        hdr.dwFlags = 0;
+
+        if (waveInPrepareHeader(hWaveIn, &hdr, sizeof(hdr)) == MMSYSERR_NOERROR) {
+            if (waveInAddBuffer(hWaveIn, &hdr, sizeof(hdr)) == MMSYSERR_NOERROR) {
+                if (waveInStart(hWaveIn) == MMSYSERR_NOERROR) {
+                    Sleep(50); // Let it capture some audio
+                    waveInStop(hWaveIn);
+                    BCryptHashData(hHash, buffer, sizeof(buffer), 0);
+                }
+            }
+            waveInUnprepareHeader(hWaveIn, &hdr, sizeof(hdr));
+        }
+        waveInClose(hWaveIn);
+    } else {
+        // Fallback: Just hash QueryPerformanceCounter several times with Sleep
+        for (int i = 0; i < 5; i++)
+        {
+            LARGE_INTEGER counter;
+            QueryPerformanceCounter(&counter);
+            BCryptHashData(hHash, (PUCHAR)&counter, sizeof(counter), 0);
+            Sleep(10);
+        }
     }
 }
 

@@ -140,4 +140,6 @@ Hash      : $($hashObj.Hash)
 } catch {
     Write-CustomError "Unexpected error occurred." $_.Exception.Message
     exit 1
+} finally {
+    Set-Location tool
 }

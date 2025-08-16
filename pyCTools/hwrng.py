@@ -142,3 +142,20 @@ class MaxRNG:
         if not success:
             raise RuntimeError("maxrng_threadsafe failed")
         return bytes(buf)
+
+    def setup_threads(self):
+        """
+        Initialize the RNG for thread-safe operations.
+
+        This method should be called before using `maxrng_threadsafe()`.
+        It prepares the RNG for multithreaded access.
+
+        Raises:
+            RuntimeError: If the initialization fails.
+        """
+        self.dll.maxrng_init()
+        if not self.test_threading_available():
+            raise RuntimeError(
+                "Failed to initialize RNG for threading. "
+                "Ensure that the hRng DLL supports thread-safe operations."
+            )
